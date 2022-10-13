@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from "react";
 
-const Chat = ({ socket, username, room }) => {
+import { useSelector, useDispatch } from "react-redux";
+import { SaveChatData } from "../Redux/Slice/ChatSlice";
+
+import "./Chat.scss";
+
+const Chat = () => {
+  const dispatch = useDispatch();
+
   const [currentMessage, setCurrentMessage] = useState("");
+  const Data = useSelector((state) => state.LoginSlice);
+  const ChatData = useSelector((state) => state.ChatSlice);
+
+  console.log("ChatData --> ", ChatData);
 
   const sendMessage = async () => {
     if (currentMessage !== "") {
       const messageData = {
-        room: room,
-        author: username,
+        room: Data.loginData.room,
+        author: Data.loginData.username,
         message: currentMessage,
         time:
           new Date(Date.now()).getHours() +
@@ -15,29 +26,41 @@ const Chat = ({ socket, username, room }) => {
           new Date(Date.now()).getMinutes(),
       };
 
-      await socket.emit("send_message", messageData);
+      await Data.loginData.socket.emit("send_message", messageData);
+      dispatch(SaveChatData(messageData));
     }
   };
 
   useEffect(() => {
-    socket.on("receive_message", (data) => {
-      console.log(data);
+    Data.loginData.socket.on("receive_message", (data) => {
+      console.log("receive_message: ", data);
+      dispatch(SaveChatData(data));
     });
-  }, [socket]);
+  }, [Data.loginData.socket]);
 
   return (
     <>
-      <div className="chat-header">
-        <p>Live chat</p>
-      </div>
-      <div className="chat-body">Chat</div>
-      <div className="chat-footer">
-        <input
-          type="text"
-          placeholder="Write here..."
-          onChange={(e) => setCurrentMessage(e.target.value)}
-        />
-        <button onClick={sendMessage}>&#9658;</button>
+      <div className="chat-container">
+        <div className="chat-header">
+          <p>Live chat</p>
+        </div>
+        <div className="chat-body">
+          {ChatData.data.map((d) => {
+            if (d.author === Data.loginData.username) {
+              return <div className="sender-message">{d.message}</div>;
+            } else {
+              return <div className="receiver-message">{d.message}</div>;
+            }
+          })}
+        </div>
+        <div className="chat-footer">
+          <input
+            type="text"
+            placeholder="Write here..."
+            onChange={(e) => setCurrentMessage(e.target.value)}
+          />
+          <button onClick={sendMessage}>&#9658;</button>
+        </div>
       </div>
     </>
   );
